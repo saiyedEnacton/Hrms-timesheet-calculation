@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_supabase_supabase__list_tables",
+      "Read(//d/saas/saasxpo-staging/**)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const raw=fs.readFileSync\\('C:/Users/zeels/.claude/projects/D--saas-saasxpo-staging-HRMS-functionality/41f29114-ba4d-4ee7-9920-d8a1d4344efe/tool-results/mcp-plugin_supabase_supabase-list_tables-1775458848862.txt','utf8'\\); const arr=JSON.parse\\(raw\\); const text=arr[0].text; const tables=JSON.parse\\(text\\); console.log\\(tables.map\\(t=>t.name\\).join\\('\\\\n'\\)\\);\")",
+      "Bash(node schema.js)",
+      "Bash(node seed.js)",
+      "Bash(node test-overtime.js)",
+      "Bash(node test-lifecycle.js)"
+    ]
+  }
+}

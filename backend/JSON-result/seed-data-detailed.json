@@ -1,0 +1,535 @@
+{
+  "database": {
+    "name": "HRMS Testing Database",
+    "timestamp": "2026-04-07",
+    "status": "initialized",
+    "tables": {
+      "employees": {
+        "total": 6,
+        "records": [
+          {
+            "id": "mm",
+            "name": "Max Müller",
+            "date_of_birth": "1997-03-15",
+            "hire_date": "2024-12-01",
+            "role": "Service",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 27,
+            "age_bracket": "20-49"
+          },
+          {
+            "id": "as",
+            "name": "Anna Schmidt",
+            "date_of_birth": "1990-07-22",
+            "hire_date": "2025-01-01",
+            "role": "Küche",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 34,
+            "age_bracket": "20-49"
+          },
+          {
+            "id": "pk",
+            "name": "Peter Keller",
+            "date_of_birth": "1973-11-08",
+            "hire_date": "2025-03-01",
+            "role": "Bar",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 51,
+            "age_bracket": "50+"
+          },
+          {
+            "id": "sl",
+            "name": "Sarah Lang",
+            "date_of_birth": "2001-05-14",
+            "hire_date": "2025-07-01",
+            "role": "Service",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 23,
+            "age_bracket": "20-49"
+          },
+          {
+            "id": "tw",
+            "name": "Thomas Weber",
+            "date_of_birth": "1980-02-28",
+            "hire_date": "2025-09-01",
+            "role": "Küche",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 44,
+            "age_bracket": "20-49"
+          },
+          {
+            "id": "lm",
+            "name": "Lisa Meier",
+            "date_of_birth": "2006-09-03",
+            "hire_date": "2025-12-01",
+            "role": "Service",
+            "location": "Zürich",
+            "status": "active",
+            "age_on_jan_2025": 18,
+            "age_bracket": "18-19"
+          }
+        ]
+      },
+      "employment_contracts": {
+        "total": 6,
+        "records": [
+          {
+            "employee_id": "mm",
+            "employment_type": "full-time",
+            "work_percentage": 100,
+            "weekly_target_hours": 40,
+            "effective_from": "2024-12-01",
+            "effective_to": null,
+            "status": "active"
+          },
+          {
+            "employee_id": "as",
+            "employment_type": "part-time",
+            "work_percentage": 80,
+            "weekly_target_hours": 32,
+            "effective_from": "2025-01-01",
+            "effective_to": null,
+            "status": "active"
+          },
+          {
+            "employee_id": "pk",
+            "employment_type": "full-time",
+            "work_percentage": 100,
+            "weekly_target_hours": 40,
+            "effective_from": "2025-03-01",
+            "effective_to": null,
+            "status": "active"
+          },
+          {
+            "employee_id": "sl",
+            "employment_type": "full-time",
+            "work_percentage": 100,
+            "weekly_target_hours": 40,
+            "effective_from": "2025-07-01",
+            "effective_to": null,
+            "status": "active"
+          },
+          {
+            "employee_id": "tw",
+            "employment_type": "part-time",
+            "work_percentage": 60,
+            "weekly_target_hours": 24,
+            "effective_from": "2025-09-01",
+            "effective_to": null,
+            "status": "active"
+          },
+          {
+            "employee_id": "lm",
+            "employment_type": "intern",
+            "work_percentage": 100,
+            "weekly_target_hours": 40,
+            "effective_from": "2025-12-01",
+            "effective_to": null,
+            "status": "active"
+          }
+        ]
+      },
+      "company_policies": {
+        "total": 1,
+        "records": [
+          {
+            "id": 1,
+            "version": 1,
+            "weekly_hours": 40,
+            "max_weekly_hours": 48,
+            "daily_hours": 8,
+            "age_based_vacation": true,
+            "default_vacation_days": 25,
+            "age_ranges": [
+              {"minAge": 18, "maxAge": 19, "days": 29},
+              {"minAge": 20, "maxAge": 49, "days": 23},
+              {"minAge": 50, "maxAge": null, "days": 29}
+            ],
+            "carryover_allowed": true,
+            "max_carryover_days": 5,
+            "premium_rates": {
+              "overtime": {"enabled": true, "rate": 0, "threshold": 40},
+              "extratime": {"enabled": true, "rate": 25, "threshold": 48},
+              "holiday": {"enabled": true, "rate": 100},
+              "sunday": {"enabled": true, "rate": 100},
+              "night": {"enabled": true, "rate": 25, "startTime": "23:00", "endTime": "06:00"}
+            },
+            "effective_from": "2024-01-01",
+            "effective_to": null,
+            "change_reason": "Initial policy",
+            "status": "active"
+          }
+        ]
+      },
+      "public_holidays": {
+        "total": 10,
+        "region": "CH",
+        "year": 2025,
+        "records": [
+          {"date": "2025-01-01", "name": "Neujahr", "type": "public", "recurring": true},
+          {"date": "2025-01-02", "name": "Berchtoldstag", "type": "public", "recurring": true},
+          {"date": "2025-04-18", "name": "Karfreitag", "type": "public", "recurring": false},
+          {"date": "2025-04-21", "name": "Ostermontag", "type": "public", "recurring": false},
+          {"date": "2025-05-01", "name": "Tag der Arbeit", "type": "public", "recurring": true},
+          {"date": "2025-05-29", "name": "Auffahrt", "type": "public", "recurring": false},
+          {"date": "2025-06-09", "name": "Pfingstmontag", "type": "public", "recurring": false},
+          {"date": "2025-08-01", "name": "Bundesfeier", "type": "public", "recurring": true},
+          {"date": "2025-12-25", "name": "Weihnachten", "type": "public", "recurring": true},
+          {"date": "2025-12-26", "name": "Stephanstag", "type": "public", "recurring": true}
+        ]
+      },
+      "year_balances": {
+        "total": 6,
+        "year": 2025,
+        "records": [
+          {
+            "employee_id": "mm",
+            "year": 2025,
+            "vacation_entitlement": 23,
+            "vacation_carryover": 3,
+            "overtime_carryover": 8,
+            "vacation_total_available": 26,
+            "policy_id": 1
+          },
+          {
+            "employee_id": "as",
+            "year": 2025,
+            "vacation_entitlement": 18.4,
+            "vacation_carryover": 0,
+            "overtime_carryover": 0,
+            "vacation_total_available": 18.4,
+            "policy_id": 1
+          },
+          {
+            "employee_id": "pk",
+            "year": 2025,
+            "vacation_entitlement": 29,
+            "vacation_carryover": 0,
+            "overtime_carryover": 0,
+            "vacation_total_available": 29,
+            "policy_id": 1,
+            "note": "Pro-rata: hired 2025-03-01, 10 months"
+          },
+          {
+            "employee_id": "sl",
+            "year": 2025,
+            "vacation_entitlement": 23,
+            "vacation_carryover": 0,
+            "overtime_carryover": 0,
+            "vacation_total_available": 23,
+            "policy_id": 1,
+            "note": "Pro-rata: hired 2025-07-01, 6 months"
+          },
+          {
+            "employee_id": "tw",
+            "year": 2025,
+            "vacation_entitlement": 13.8,
+            "vacation_carryover": 0,
+            "overtime_carryover": 0,
+            "vacation_total_available": 13.8,
+            "policy_id": 1,
+            "note": "Pro-rata: hired 2025-09-01, 4 months"
+          },
+          {
+            "employee_id": "lm",
+            "year": 2025,
+            "vacation_entitlement": 23,
+            "vacation_carryover": 0,
+            "overtime_carryover": 0,
+            "vacation_total_available": 23,
+            "policy_id": 1,
+            "note": "Pro-rata: hired 2025-12-01, 1 month"
+          }
+        ]
+      },
+      "time_entries": {
+        "total": 21,
+        "records": [
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-03",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-04",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-05",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-06",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-07",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-10",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-11",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-12",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-13",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-14",
+            "entry_type": "work",
+            "clock_in": "08:00",
+            "clock_out": "17:00",
+            "break_minutes": 30,
+            "hours": 8.5,
+            "regular_hours": 8,
+            "overtime_hours": 0.5,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-17",
+            "entry_type": "vacation",
+            "hours": 8,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "mm",
+            "work_date": "2025-03-18",
+            "entry_type": "vacation",
+            "hours": 8,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-03",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-04",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-05",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-06",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-10",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-11",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-12",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-13",
+            "entry_type": "work",
+            "clock_in": "09:00",
+            "clock_out": "17:30",
+            "break_minutes": 30,
+            "hours": 8,
+            "regular_hours": 8,
+            "overtime_hours": 0,
+            "policy_id": 1,
+            "status": "approved"
+          },
+          {
+            "employee_id": "as",
+            "work_date": "2025-03-07",
+            "entry_type": "sick",
+            "hours": 8,
+            "policy_id": 1,
+            "status": "approved"
+          }
+        ]
+      }
+    },
+    "summary": {
+      "total_employees": 6,
+      "total_policies": 1,
+      "total_holidays": 10,
+      "total_time_entries": 21,
+      "week_1_analysis": {
+        "max_mueller": {
+          "week": "2025-03-03 to 2025-03-07",
+          "total_hours": 42.5,
+          "overtime": 2.5,
+          "status": "overtime detected"
+        },
+        "anna_schmidt": {
+          "week": "2025-03-03 to 2025-03-07",
+          "total_hours": 32,
+          "overtime": 0,
+          "status": "within threshold (80% contract)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,486 @@
+# HRMS Schema Design & Testing Project Rules
+
+## Project Context
+
+This is a schema design and validation project for HRMS timesheet/leave tracking. The goal is to create database schemas that maintain historical accuracy when business rules change over time.
+
+## Core Principles (CRITICAL - DO NOT VIOLATE)
+
+### 1. Immutability Over Mutability
+- NEVER update existing time entries, leave records, or calculated values
+- ALWAYS create new versioned records
+- Use `effective_from` and `effective_to` dates for versioning
+- Soft deletes only when absolutely necessary (prefer versioning)
+
+### 2. Calculate Once, Store Forever
+- Calculate values at transaction time, not query time
+- Store calculation context (which rule version, who calculated, when)
+- Save calculation formula/logic as JSON for audit purposes
+- Never recalculate historical data when rules change
+
+### 3. Policy Versioning is Mandatory
+- Every business rule MUST have version tracking
+- Every version MUST have effective date range
+- Every transaction MUST reference the policy version used
+- Policy changes create new versions, never modify existing
+
+## Database Schema Rules
+
+### Table Design
+
+#### Required Fields for Transaction Tables
+```sql
+-- Every transaction table MUST include:
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+created_by VARCHAR(100) NOT NULL,
+effective_date DATE NOT NULL,
+policy_version_id INTEGER REFERENCES policy_table(id),
+is_deleted BOOLEAN DEFAULT FALSE,
+deleted_at TIMESTAMP,
+deleted_by VARCHAR(100)
+```
+
+#### Required Fields for Policy Tables
+```sql
+-- Every policy table MUST include:
+id INTEGER PRIMARY KEY,
+version INTEGER NOT NULL,
+effective_from DATE NOT NULL,
+effective_to DATE,  -- NULL means currently active
+created_at TIMESTAMP NOT NULL,
+created_by VARCHAR(100) NOT NULL,
+supersedes_policy_id INTEGER REFERENCES same_table(id),
+policy_definition JSON NOT NULL,  -- The actual rules
+change_reason TEXT  -- Why this version was created
+```
+
+#### Required Fields for Calculated Tables
+```sql
+-- Every calculation result table MUST include:
+id INTEGER PRIMARY KEY,
+source_record_id INTEGER NOT NULL,
+calculation_date DATE NOT NULL,
+calculated_at TIMESTAMP NOT NULL,
+calculated_by VARCHAR(100) NOT NULL,
+policy_version_id INTEGER NOT NULL,
+calculation_method JSON NOT NULL,  -- How it was calculated
+input_values JSON,  -- What values were used
+result_values JSON  -- What was calculated
+```
+
+### Naming Conventions
+
+- Tables: `snake_case`, plural (e.g., `overtime_policies`, `leave_transactions`)
+- Columns: `snake_case` (e.g., `effective_from`, `policy_version_id`)
+- Indexes: `idx_{table}_{columns}` (e.g., `idx_time_entries_employee_date`)
+- Foreign keys: `fk_{source_table}_{target_table}` (e.g., `fk_time_entries_employees`)
+
+### Indexing Strategy
+
+Always index:
+- `effective_date` (for temporal queries)
+- `employee_id` (for employee-specific queries)
+- `created_at` (for audit trails)
+- Combination: `(employee_id, effective_date)` (most common query pattern)
+- Policy tables: `(effective_from, effective_to)` for point-in-time lookups
+
+## Code Organization Rules
+
+### Backend (Node.js + SQLite)
+
+#### File Structure
+```
+backend/
+├── db/
+│   ├── schema/
+│   │   ├── 001_employees.sql
+│   │   ├── 002_policies.sql
+│   │   ├── 003_time_entries.sql
+│   │   └── ...
+│   ├── migrations/
+│   │   └── YYYYMMDD_description.sql
+│   └── seed/
+│       ├── test_employees.sql
+│       └── test_policies.sql
+├── lib/
+│   ├── db.js                 # Database connection
+│   ├── policy-engine.js      # Policy resolution logic
+│   ├── calculators/
+│   │   ├── overtime.js
+│   │   ├── leave.js
+│   │   └── premium.js
+│   └── validators/
+│       └── schema-validator.js
+├── tests/
+│   ├── scenarios/
+│   │   ├── policy-change.test.js
+│   │   ├── employee-lifecycle.test.js
+│   │   └── edge-cases.test.js
+│   └── fixtures/
+│       └── test-data.js
+└── scripts/
+    ├── init-db.js
+    ├── run-all-tests.js
+    └── generate-report.js
+```
+
+#### Module Patterns
+
+**Policy Resolution:**
+```javascript
+// CORRECT: Get policy active on specific date
+function getPolicyVersion(policyType, effectiveDate) {
+  return db.query(`
+    SELECT * FROM ${policyType}_policies
+    WHERE effective_from <= ?
+      AND (effective_to IS NULL OR effective_to >= ?)
+    ORDER BY effective_from DESC
+    LIMIT 1
+  `, [effectiveDate, effectiveDate]);
+}
+
+// WRONG: Get latest policy (ignores temporal aspect)
+function getLatestPolicy(policyType) {
+  return db.query(`SELECT * FROM ${policyType}_policies ORDER BY id DESC LIMIT 1`);
+}
+```
+
+**Calculation Storage:**
+```javascript
+// CORRECT: Store calculation with full context
+function calculateAndStoreOvertime(timeEntryId, effectiveDate) {
+  const policy = getPolicyVersion('overtime', effectiveDate);
+  const timeEntry = getTimeEntry(timeEntryId);
+
+  const result = calculateOvertime(timeEntry, policy);
+
+  db.insert('overtime_calculations', {
+    time_entry_id: timeEntryId,
+    effective_date: effectiveDate,
+    policy_version_id: policy.id,
+    regular_hours: result.regular,
+    overtime_hours: result.overtime,
+    calculation_method: JSON.stringify({
+      policy_type: 'daily_threshold',
+      threshold_hours: policy.daily_threshold,
+      rate: policy.overtime_rate
+    }),
+    calculated_at: new Date(),
+    calculated_by: 'system'
+  });
+
+  return result;
+}
+
+// WRONG: Calculate without storing context
+function calculateOvertime(timeEntry) {
+  return timeEntry.hours > 8 ? timeEntry.hours - 8 : 0;
+}
+```
+
+### Frontend (React/Vite)
+
+#### Component Rules
+
+- Use functional components with hooks
+- Keep business logic in context providers or custom hooks
+- Display layer should be READ-ONLY
+- No calculations in components (get from backend/context)
+
+**CORRECT:**
+```typescript
+// Context provides pre-calculated data
+const { getEmployeeTimesheet } = useTimesheet();
+const timesheet = getEmployeeTimesheet(employeeId, date);
+
+return <TimesheetView data={timesheet} />;
+```
+
+**WRONG:**
+```typescript
+// Component doing calculations
+const calculateOvertime = (hours) => hours > 8 ? hours - 8 : 0;
+```
+
+## Testing Requirements
+
+### Test Case Structure
+
+Each test MUST:
+1. Set up initial state with specific policy version
+2. Perform action (add time entry, change policy)
+3. Verify data integrity
+4. Verify historical accuracy
+5. Clean up (or use transaction rollback)
+
+### Test Template
+```javascript
+describe('Policy Change Scenario: Overtime Rule Change', () => {
+  beforeEach(() => {
+    // Setup: Create policy v1
+    db.exec(`
+      INSERT INTO overtime_policies (id, version, effective_from, policy_definition)
+      VALUES (1, 1, '2024-01-01', '{"threshold": 8, "rate": 1.5}')
+    `);
+
+    // Add time entry under policy v1
+    addTimeEntry('emp1', '2024-06-15', 10); // 2 hours overtime
+  });
+
+  test('Old calculations unchanged after policy change', () => {
+    // Act: Change policy on July 1
+    db.exec(`
+      UPDATE overtime_policies SET effective_to = '2024-06-30' WHERE id = 1;
+      INSERT INTO overtime_policies (id, version, effective_from, policy_definition, supersedes_policy_id)
+      VALUES (2, 2, '2024-07-01', '{"threshold": 40, "weekly": true, "rate": 1.5}', 1);
+    `);
+
+    // Add new time entry under policy v2
+    addTimeEntry('emp1', '2024-07-15', 10); // Different calculation logic
+
+    // Assert: June entry still references old policy
+    const juneCalc = db.query(`
+      SELECT * FROM overtime_calculations
+      WHERE effective_date = '2024-06-15'
+    `)[0];
+
+    expect(juneCalc.policy_version_id).toBe(1);
+    expect(juneCalc.overtime_hours).toBe(2.0); // Calculated with daily threshold
+
+    // Assert: July entry uses new policy
+    const julyCalc = db.query(`
+      SELECT * FROM overtime_calculations
+      WHERE effective_date = '2024-07-15'
+    `)[0];
+
+    expect(julyCalc.policy_version_id).toBe(2);
+    // Different calculation (would need weekly context)
+  });
+
+  test('Can reconstruct historical report accurately', () => {
+    // Change policy
+    changePolicyVersion();
+
+    // Query June timesheet
+    const juneReport = generateTimesheetReport('emp1', '2024-06');
+
+    // Should match original calculations exactly
+    expect(juneReport.overtime_hours).toBe(2.0);
+    expect(juneReport.policy_version_used).toBe(1);
+  });
+});
+```
+
+### Test Coverage Requirements
+
+MUST test:
+- ✅ Policy versioning works correctly
+- ✅ Historical data never changes
+- ✅ New data uses new policies
+- ✅ Cross-period queries work
+- ✅ All edge cases from checklist
+- ✅ Concurrent policy versions (different departments)
+- ✅ Audit trail completeness
+
+## Query Patterns
+
+### Point-in-Time Queries
+
+**Get employee's timesheet for specific date (with correct policy):**
+```sql
+SELECT
+  te.id,
+  te.employee_id,
+  te.work_date,
+  te.clock_in,
+  te.clock_out,
+  oc.regular_hours,
+  oc.overtime_hours,
+  oc.premium_hours,
+  op.version as policy_version,
+  oc.calculation_method
+FROM time_entries te
+JOIN overtime_calculations oc ON te.id = oc.time_entry_id
+JOIN overtime_policies op ON oc.policy_version_id = op.id
+WHERE te.employee_id = ?
+  AND te.work_date BETWEEN ? AND ?
+ORDER BY te.work_date;
+```
+
+**Get active policy for a specific date:**
+```sql
+SELECT * FROM overtime_policies
+WHERE effective_from <= ?
+  AND (effective_to IS NULL OR effective_to >= ?)
+ORDER BY effective_from DESC
+LIMIT 1;
+```
+
+**Audit trail for specific record:**
+```sql
+SELECT
+  te.id,
+  te.work_date,
+  te.created_at,
+  te.created_by,
+  oc.calculated_at,
+  oc.calculated_by,
+  op.version as policy_version,
+  op.effective_from as policy_effective_from,
+  oc.calculation_method
+FROM time_entries te
+LEFT JOIN overtime_calculations oc ON te.id = oc.time_entry_id
+LEFT JOIN overtime_policies op ON oc.policy_version_id = op.id
+WHERE te.id = ?;
+```
+
+## Documentation Requirements
+
+### Schema Changes
+Every schema change MUST be documented with:
+- Migration SQL file with timestamp
+- Reason for change
+- Impact assessment (which queries affected)
+- Rollback plan
+
+### Test Results
+Every test run MUST produce:
+- Summary report (pass/fail counts)
+- Detailed failure analysis
+- Performance metrics (query times)
+- Data integrity checks
+
+### Design Decisions
+Document in markdown:
+- Why this approach was chosen
+- What alternatives were considered
+- Trade-offs made
+- Performance implications
+
+## Error Handling
+
+### Database Operations
+
+```javascript
+// CORRECT: Validate before insert
+function addTimeEntry(employeeId, workDate, hours) {
+  // Validate employee exists
+  const employee = db.get('SELECT id FROM employees WHERE id = ?', [employeeId]);
+  if (!employee) {
+    throw new Error(`Employee ${employeeId} not found`);
+  }
+
+  // Validate date is not in future
+  if (new Date(workDate) > new Date()) {
+    throw new Error('Cannot create time entry for future date');
+  }
+
+  // Check for duplicates
+  const existing = db.get(
+    'SELECT id FROM time_entries WHERE employee_id = ? AND work_date = ?',
+    [employeeId, workDate]
+  );
+  if (existing) {
+    throw new Error('Time entry already exists for this date');
+  }
+
+  // Get active policy
+  const policy = getPolicyVersion('overtime', workDate);
+  if (!policy) {
+    throw new Error(`No overtime policy active on ${workDate}`);
+  }
+
+  // Insert within transaction
+  return db.transaction(() => {
+    const result = db.insert('time_entries', {
+      employee_id: employeeId,
+      work_date: workDate,
+      hours: hours,
+      created_at: new Date(),
+      created_by: 'system'
+    });
+
+    calculateAndStoreOvertime(result.lastID, workDate);
+
+    return result;
+  });
+}
+```
+
+## Performance Considerations
+
+### Optimization Rules
+
+1. **Use transactions for related inserts**
+2. **Index all foreign keys**
+3. **Index temporal query columns** (effective_date, created_at)
+4. **Partition large tables by year** (time_entries, leave_transactions)
+5. **Archive old data** (but keep accessible for audits)
+6. **Use prepared statements** for repeated queries
+7. **Avoid N+1 queries** (use JOINs or batch fetches)
+
+### Query Performance Targets
+
+- Single employee timesheet query: < 50ms
+- Policy resolution: < 10ms
+- Calculation and storage: < 100ms
+- Historical report (1 year): < 500ms
+- Full audit trail: < 1s
+
+## Anti-Patterns (NEVER DO THESE)
+
+❌ **Updating calculated values**
+```sql
+-- WRONG
+UPDATE overtime_calculations SET overtime_hours = 5 WHERE id = 123;
+```
+
+❌ **Deleting historical records**
+```sql
+-- WRONG
+DELETE FROM time_entries WHERE work_date < '2023-01-01';
+```
+
+❌ **Recalculating on query**
+```sql
+-- WRONG
+SELECT *, (hours - 8) as overtime FROM time_entries WHERE hours > 8;
+```
+
+❌ **Missing policy reference**
+```sql
+-- WRONG
+INSERT INTO overtime_calculations (hours, overtime) VALUES (10, 2);
+-- Missing: policy_version_id, calculation_method, etc.
+```
+
+❌ **Implicit policy assumptions**
+```javascript
+// WRONG
+function calculateOvertime(hours) {
+  return hours > 8 ? (hours - 8) * 1.5 : 0;
+}
+// Hardcoded rules - what if they change?
+```
+
+## Success Metrics
+
+The implementation is successful when:
+
+1. ✅ All tests pass (100% coverage of checklist scenarios)
+2. ✅ Can change any policy without affecting historical data
+3. ✅ Can reconstruct any report from any point in time
+4. ✅ Complete audit trail for compliance
+5. ✅ Query performance meets targets
+6. ✅ Schema is documented and understandable
+7. ✅ Code is maintainable and well-tested
+8. ✅ Handles all edge cases gracefully
+
+## Getting Help
+
+When stuck:
+1. Review CLAUDE.md testing checklist
+2. Check existing documentation in `src/docs/`
+3. Look for similar patterns in existing code
+4. Write a test case first to clarify the requirement
+5. Document your findings and design decisions

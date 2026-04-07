@@ -1,0 +1,511 @@
+HRMS Timesheet Feature - Study Guide & Client Decisions
+Date: March 9, 2026 (UPDATED POST-MEETING)
+ Purpose: Complete reference with all client decisions from March 6 meeting
+
+PART 1: FEATURE OVERVIEW SUMMARY (UPDATED)
+What is the Timesheet System?
+A time tracking and balance management system for restaurant/gastro employees that:
+Logs daily work hours and absences (simplified: Work/Free only)
+Calculates vacation days, overtime, and compensations
+Ensures Swiss labor law compliance
+Provides views for both employees and managers
+Admin categorizes absence types (not employee)
+The Three Main Components (WITH CHANGES)
+1️⃣ My View (Employee Interface) ✅ UPDATED
+Personal time tracking dashboard
+Log work hours OR Free day (no absence type selection)
+DELETED: Timer feature (play/pause/stop)
+View own vacation & overtime balance
+Cannot edit balances (admin only)
+Export personal timesheet
+Key Data:
+Work hours + breaks
+Vacation days earned & used
+Overtime accumulated
+No manual balance adjustments
+2️⃣ Team View (Manager Interface) ✅ UPDATED
+See all employees' timesheets (or filter to one)
+View team-wide balance overview
+Edit individual employee balances
+Approve/categorize "Free" entries (select absence type)
+Export team reports (PDF/Excel)
+Key Features:
+Filter by employee
+Show/hide former employees
+2-tab balance management (Carryover, Payout only)
+DELETED: Manual Adjustment tab
+3️⃣ Company Settings (Admin Interface) ✅ UPDATED
+Configure working hours (8h daily, 40h weekly, 48h max)
+Set premium rates (Sunday 50%, Holiday 100%, Extratime 25%)
+DELETED: Night Shift Premium (22:00-06:00)
+Manage holidays (Swiss public + company-specific)
+Configure vacation rules (age-based entitlements, pro-rata)
+UPDATED: Carryover ALWAYS ON (no toggle)
+
+PART 2: KEY CONCEPTS & CALCULATION FLOWS (VERIFIED)
+Concept 1: Target Hours (Soll) ✅ CONFIRMED
+What it is: How many hours an employee SHOULD work in a period
+Calculation:
+Target Hours = Working Days × 8h × Work Percentage
+
+Example (Max Müller, December 2025):
+- Working days in Dec: 23 (31 - weekends - 11 holidays)
+- Daily target: 8h
+- Work percentage: 100%
+- Target = 23 × 8 × 100% = 184h
+
+Pro-Rata for mid-year starters:
+Employee starts June 1, 100% workload:
+- Days remaining: 214 (June 1 - Dec 31)
+- Target hours: 214 ÷ 365 × (52 weeks × 40h) = ~1,210h for rest of year
+
+
+Concept 2: Worked Hours (Ist) ✅ CONFIRMED
+What it is: Actual hours an employee worked + paid absences (unpaid ≠ included)
+Includes:
+✅ Actual work hours (logged in timesheet)
+✅ Paid absences (vacation, sick, maternity, holiday premium)
+✅ Premium hours (Sunday 50%, Holiday 100%, Extratime 25%)
+Excludes:
+❌ Unpaid absences (no hours, no pay, no balance impact)
+❌ Free days (unpaid = 0 hours)
+Example:
+December 2025 for Max Müller:
+Dec 1: 8h work
+Dec 2: 8.5h work
+Dec 3: 4h work + 4h sick (paid = counts)
+Dec 3: 2h unpaid leave (0 hours, doesn't count)
+...
+Worked Hours = 180.5h (unpaid excluded)
+
+
+Concept 3: Overtime Balance (Saldo) ✅ CONFIRMED
+Formula:
+Overtime = Worked Hours - Target Hours + Carryover - Compensation Used - Payouts
+
+Example:
+Worked: 183.2h
+Target: 176.0h
+Difference: +7.2h
+Carryover from 2024: +5.0h
+Compensation days used: -16h (2 days × 8h)
+Payouts: -10.0h
+
+Balance = 7.2 + 5.0 - 16 - 10 = -13.8h (owes company)
+
+NO Manual Adjustments ❌ DELETED
+Risk too high
+Payouts cover most cases
+
+Concept 4: Vacation Balance ✅ CONFIRMED
+Formula:
+Vacation = Earned Days + Carryover (100%, no limit) - Used Days - Payouts
+
+Example (Max Müller, Age 35):
+Annual entitlement: 25 days (age 20-49)
+Earned since Jan 1: 20.8 days
+Carryover from 2024: +5.0 days (100%, always allowed)
+Used in 2025: -17 days
+Payouts: -2.5 days
+
+Balance = 20.8 + 5.0 - 17 - 2.5 = 6.3 days
+
+CHANGE: Carryover NOW ALWAYS ENABLED
+❌ OLD: Had toggle + max limit (5 days)
+✅ NEW: Always 100% carryover, no system limit
+Manual expiry (March 31) not enforced
+
+Concept 5: Pro-Rata Calculations ✅ CONFIRMED
+When used:
+Employee starts mid-year
+Employee works part-time (any %)
+Combination of both
+Example (Anna Schmidt, started June 1, 2025, 80% part-time, age 29):
+Full-time entitlement: 25 days (age 20-49)
+Work percentage: 80%
+Days remaining in year (June-Dec): 214 days
+
+Calculation:
+1. Remaining fraction: 214 / 365 = 0.586
+2. Pro-rated full-time: 25 × 0.586 = 14.65 days
+3. Adjusted for part-time: 14.65 × 0.80 = 11.7 days earned in 2025
+
+Apply work percentage history: Track if % changes mid-year
+- Example: 80% (Jan-June) then 100% (July-Dec)
+- Recalculate split at change date
+
+CRITICAL: Work percentage history must be tracked (NEW database table)
+
+Concept 6: Premium Hours ✅ UPDATED
+Types KEPT:
+Sunday Premium (50%) - Working on Sunday = +50% bonus hours
+Holiday Premium (100%) - Working on public holiday = +100% bonus hours
+Extratime Premium (25%) - Working >48h/week = +25% bonus hours
+Type DELETED: ❌ Night Shift Premium (22:00-06:00) - REMOVED
+Too complex for current use case
+Can be added in Phase 2 if needed
+Example (Week with Sunday work):
+Mon-Fri: 40h work
+Sunday: 8h work (on weekend)
+
+Base hours: 48h
+Sunday premium: 8h × 50% = 4h
+Total: 48 + 4 = 52h
+
+Status: ⚠️ EXTRATIME (exceeds 48h legal limit)
+Action needed: Grant compensation day
+
+Premium Stacking:
+Sunday + Holiday: Both apply = 8 + 4 + 8 = 20h total
+Premiums CAN stack
+
+Concept 7: Weekly Compliance ✅ CONFIRMED
+Status Levels:
+✅ OK (≤40h) - Within standard hours
+⚠️ OVERTIME (40-48h) - Exceeds standard but legal (0% premium)
+🔴 EXTRATIME (>48h) - Illegal, requires 25% premium + compensation
+Why it matters: Swiss labor law - max 48h/week average
+
+PART 3: ABSENCE TYPES SIMPLIFIED
+✅ EMPLOYEE ENTRY: TWO OPTIONS ONLY
+When logging time, employee selects:
+💼 Work - Normal work entry
+🏠 Free - Any absence (admin will categorize)
+NO dropdown with 22 types ❌ DELETED
+✅ ADMIN CATEGORIZATION (NEW WORKFLOW)
+Admin clicks "Free" entry and selects from full list:
+Category 1: WORK (2 types)
+Type
+Label
+Icon
+Hours
+Notes
+work
+Work/Arbeit
+💼
+User-entered
+Normal work hours
+free
+Free/Frei
+🏠
+0
+Employee marks (admin categorizes)
+
+Category 2: PAID ABSENCES (15 types - count as 8h, in worked hours)
+Type
+Label
+Icon
+Balance Impact
+vacation
+Vacation/Ferien
+🏖
+-1 day from vacation
+sick
+Sick Leave/Krankheit
+🤒
+None (paid, no deduction)
+accident
+Accident/Unfall
+🚑
+None (paid)
+maternity
+Maternity Leave/Mutterschaftsurlaub
+👶
+None (paid)
+paternity
+Paternity Leave/Vaterschaftsurlaub
+👨👶
+None (paid)
+military
+Military Service/Militärdienst
+🪖
+None (paid)
+civil-service
+Civil Service/Zivildienst
+🤝
+None (paid)
+protection-service
+Protection Service/Schutzdienst
+🛡
+None (paid)
+vocational-school
+Vocational School/Berufsschule
+🎓
+None (paid)
+courses
+Courses/Kurse
+📚
+None (paid)
+pregnancy
+Pregnancy Absences/Schwangerschaftsabs.
+🤰
+None (paid)
+operational
+Operational Closures/Betrieblich festg.
+🏢
+None (paid, public holiday)
+compensation-vacation-previous
+Comp. Vacation Previous Year
+⏮️
+Uses vacation carryover
+compensation-overtime-previous
+Comp. Overtime Previous Year
+⏮️
+Uses overtime carryover
+compensation-current
+Compensation Current/Kompensation
+⏪
+-8h from overtime balance
+
+Category 3: UNPAID ABSENCES (6 types - 0 hours, 0 pay, no balance impact)
+Type
+Label
+Icon
+Hours
+Impact
+absence-unpaid
+Absences/Absenzen
+❌
+0
+None (payroll deduction only)
+short-absence
+Short Absences/Kurzabsenzen
+⏱️
+User-defined
+Proportional deduction
+short-time
+Short-time Work/Kurzarbeit
+⏰
+0
+None (gov't subsidy situation)
+bad-weather
+Bad Weather/Schlechtwetter
+🌧
+0
+None (company closure)
+leave-unpaid
+Unpaid Leave/Urlaub unbezahlt
+🚫
+0
+None (employee choice)
+missing-hours
+Missing Hours Unpaid/Fehlstunden
+⚠️
+0
+None (unexcused absence)
+
+
+PART 4: UNPAID ABSENCE - SYSTEM CHECKS
+When Unpaid Absence Logged:
+Checks Performed:
+✓ Date valid (not future, within cutoff)
+✓ Employee active
+✓ No duplicate
+✓ Can coexist with work same day
+✓ Admin categorizes type
+✓ Weekly hours recalculated (unpaid = 0h)
+✓ No vacation/overtime balance impact
+✓ Compliance warnings (patterns)
+✓ Payroll deduction applied
+✓ Audit trail created
+Impact:
+💰 Salary deduction ONLY
+✅ Vacation balance: NOT reduced
+✅ Overtime balance: NOT reduced
+✅ Carryover: NOT affected
+✅ Weekly hours: Unpaid = 0h (doesn't count)
+
+PART 5: AUTO-FILL MISSING ENTRIES ✅ NEW FEATURE
+When: No entry logged within 72 hours
+Action:
+System auto-creates entry
+Start time: 9:00 AM (configurable)
+Duration: Daily hours from settings (default 8h)
+Type: Work
+Flagged: "auto-filled" for visibility
+Implementation: Scheduled job (cron)
+
+PART 6: BALANCE MANAGEMENT MODAL
+Tab 1: Carryover ✅ UPDATED
+Purpose: Set initial carryover from previous year
+Use: Only on Day 1 of company setup
+Fields:
+Vacation carryover (days)
+Overtime carryover (hours)
+Limit: 100% carryover allowed (no max in system)
+Status: Always enabled, no toggle
+Tab 2: Payout ✅ UPDATED
+Purpose: Record balance paid to employee
+Effect: Reduces available balance
+Fields:
+Vacation days paid out
+Overtime hours paid out
+Reason (for audit trail)
+Example: Employee requests 40h overtime → Record as payout
+Tab 3: Manual Adjustment ❌ DELETED
+Reason: Too risky, bypass normal calculations
+Alternative: Use Payout for corrections
+
+PART 7: DATA STORAGE & AUDIT TRAIL ✅ NEW
+New Database Tables Required:
+work_percentage_history
+employee_id, percentage_value, effective_date, 
+previous_percentage, reason, changed_by, changed_at
+
+Why Critical: Vacation calculation changes when % changes mid-year
+balance_audit_trail
+employee_id, change_type (carryover/payout/adjustment), 
+field (vacation/overtime), previous_value, new_value, 
+reason, changed_by, changed_at, month, year
+
+Why Critical: Swiss law requires proof of all balance changes
+time_entries (updated)
+Add fields: 
+  - absence_type (set by admin)
+  - modified_by (who categorized)
+  - modified_at (when)
+  - is_auto_filled (flag for auto-created)
+
+
+PART 8: EMPLOYMENT TYPES
+Full-time (Vollzeit)
+Work percentage: 100%
+Vacation: Full annual entitlement
+Timesheet: Required
+Part-time (Teilzeit)
+Work percentage: 20-99%
+Vacation: Pro-rated
+Timesheet: Required
+Hourly (Stundenlohn)
+Vacation: Included in hourly rate
+Timesheet: NOT required (no vacation module)
+Premium: Included in hourly calc
+
+PART 9: ALL CLIENT DECISIONS (MARCH 6, 2026)
+✅ APPROVED FOR PHASE 1
+✅ Time entry: Work/Free only (employee), admin categorizes
+✅ Vacation: Age-based (20-49=25d, 50+=30d), pro-rated
+✅ Overtime: Target vs actual hours
+✅ Carryover: 100%, always enabled, no max limit
+✅ Payout tracking with audit trail
+✅ Premiums: Sunday 50%, Holiday 100%, Extratime 25%
+✅ Auto-fill missing entries after 72 hours
+✅ PDF export for labor authority
+✅ Work percentage history tracking
+✅ Audit trail (legal requirement)
+❌ DELETED FROM SCOPE
+❌ Timer (play/pause/stop) - Manual entry sufficient
+❌ Night shift premium (22:00-06:00) - Too complex
+❌ Manual adjustment tab - Too risky
+❌ Carryover toggle - Always on
+❌ Approval workflow - Phase 2 if needed
+❌ WhatsApp API - Not suitable
+
+PART 10: COMPLETE DATA CALCULATIONS
+Vacation Earned (Pro-Rata Example)
+Employee: Anna Schmidt
+Age: 28
+Work %: 80%
+Start: June 1, 2025
+Entitlement: 25 days (age 20-49)
+
+Earned in 2025:
+= 25 × (214/365) × 0.80
+= 25 × 0.586 × 0.80
+= 11.7 days
+
+Vacation Balance
+Earned: 11.7 days
+Carryover: 5.0 days (100%)
+Used: -8 days
+Payouts: -1.5 days
+Adjustment: 0
+
+Balance = 11.7 + 5.0 - 8 - 1.5 = 7.2 days
+
+Overtime Balance
+Worked: 1,650h
+Target: 1,620h (23 workdays × 8h × 100%)
+Difference: +30h
+Carryover: +10h
+Compensation used: -40h (5 days × 8h)
+Payouts: -15h
+
+Balance = 30 + 10 - 40 - 15 = -15h (owes 15h)
+
+Weekly Status
+Week 50:
+Mon-Fri: 40h
+Saturday: 0h
+Sunday: 8h work (Sunday premium: +50% = +4h)
+Total: 48h + 4h = 52h
+
+Status: 🔴 EXTRATIME (>48h)
+Action: Grant 1 compensation day (8h) to bring below 48h
+
+
+PART 11: IMPLEMENTATION CHECKLIST
+
+Frontend Components
+[ ] Dashboard (My Time tab)
+[ ] Team View tab
+[ ] Settings: Holidays, Working Hours, Vacation
+[ ] Log Time modal (Work/Free only)
+[ ] Categorize modal (admin selects type)
+[ ] Edit Balance modal (Carryover + Payout)
+Calculations
+[ ] Target hours (pro-rata)
+[ ] Worked hours (with premiums)
+[ ] Vacation earned (monthly accrual)
+[ ] Weekly compliance check
+[ ] Premium calculations
+[ ] Audit trail logging
+Testing
+[ ] Edge case: Mid-year hire
+[ ] Edge case: Part-time changes
+[ ] Edge case: Multiple entries per day
+[ ] Edge case: Week spans months
+[ ] Pro-rata calculations
+[ ] Premium stacking
+
+PART 12: QUICK REFERENCE
+Item
+Status
+Details
+Entry Type
+✅ Work/Free
+Employee selects, admin categorizes
+Timer
+❌ Deleted
+Use manual entry instead
+Night Premium
+❌ Deleted
+Too complex, Phase 2+
+Carryover
+✅ Always On
+100% allowed, no toggle
+Manual Adjust
+❌ Deleted
+Use Payout instead
+Approval Flow
+❌ Phase 2
+Not in Phase 1
+Audit Trail
+✅ Required
+Legal requirement
+Work % History
+✅ Required
+New table needed
+Auto-fill
+✅ 72h rule
+Scheduled job
+PDF Export
+✅ Included
+Labor authority compliance
+
+
+Updated: March 9, 2026
+ Status: ✅ All client decisions implemented in designs
+ Next: Development starts Week of March 16, 2026
+
+

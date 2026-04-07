@@ -1,0 +1,289 @@
+
+── 4.1 Regular Weekday — Zero Premiums ───────────────
+  ✅ Entry created
+  ✅ Gross hours = 8h
+  ✅ Regular hours = 8h (at daily limit)
+  ✅ Overtime = 0
+  ✅ Sunday premium = 0
+  ✅ Holiday premium = 0
+  ✅ Night premium = 0
+
+── 4.2 Sunday Premium ────────────────────────────────
+  ✅ 2025-03-16 is Sunday
+  ✅ Entry created
+  ✅ Gross hours = 8.5h
+  ✅ Regular = 8h
+  ✅ Overtime = 0.5h (v1 daily>8h)
+  ✅ Sunday premium = 8.5h (all gross hours)
+  ✅ Holiday premium = 0 (not a holiday)
+  ✅ Night premium = 0 (day shift)
+
+── 4.3 Public Holiday Premium (Tag der Arbeit) ───────
+  ✅ 2025-05-01 is in public_holidays table
+  ✅ Entry created
+  ✅ Gross hours = 8.5h
+  ✅ Holiday premium = 8.5h (all gross hours)
+  ✅ Sunday premium = 0 (Thursday)
+  ✅ Night premium = 0
+
+── 4.4 Night Shift Premium (23:00–06:00 window) ──────
+  ✅ Entry created (spans midnight)
+  ✅ Gross hours = 9h
+  ✅ Regular = 8h (v1 daily_hours)
+  ✅ Overtime = 1h (9 − 8)
+  ✅ Night premium = 7h (23:00–06:00 overlap)
+  ✅ Sunday premium = 0 (Monday)
+  ✅ Holiday premium = 0
+  ✅ calcNightHours("22:00","07:00") = 7
+  ✅ calcNightHours("08:00","17:00") = 0 (day)
+  ✅ calcNightHours("23:00","06:00") = 7 (full)
+
+── 4.5 Stacked: Sunday + Holiday + Night (all three) ────
+  ✅ 2025-04-06 is Sunday
+  ✅ Test holiday exists on 2025-04-06
+  ✅ Entry created
+  ✅ Gross = 9h
+  ✅ Sunday premium = 9h (all hours)
+  ✅ Holiday premium = 9h (all hours)
+  ✅ Night premium = 7h (23:00–06:00)
+
+── 4.6 Holiday + Overtime (policy threshold, Bundesfeier 2025-08-01) ────
+  ✅ Entry created
+  ✅ Entry references active policy
+  ✅ Gross hours = 9.5h
+  ✅ Regular = 8h (active daily_hours)
+  ✅ Overtime = 1.5h (9.5 − 8)
+  ✅ Holiday premium = 9.5h (ALL gross hours, incl OT)
+  ✅ Sunday premium = 0 (Friday)
+  ✅ Night premium = 0 (day shift)
+
+── 4.7 Extratime — 50h/week Exceeds 48h Max Threshold ────
+  ✅ 5 entries inserted for the week
+  ✅ Weekly gross total = 50h
+  ✅ Weekly regular sum = 40h (5 × 8)
+  ✅ Weekly true OT (40–48h) = 8h
+  ✅ Weekly extratime (>48h) = 2h
+  ✅ Policy max_weekly_hours = 48 (v1)
+  ✅ Extratime premium rate = 25% in policy
+
+── 4.8 Rate Change — Historical Snapshots Preserved ────
+  ✅ Old Sunday entry exists (from 4.2)
+  ✅ Old entry: policy_id references v1
+  ✅ Old entry: sunday premium = 8.5h
+  ✅ 2025-10-05 is Sunday
+  ✅ New entry created under v3
+  ✅ New entry references v3 policy
+  ✅ New entry: sunday premium = 8.5h (same hours)
+  ✅ Old entry STILL references v1 policy
+  ✅ Old entry STILL has 8.5h sunday premium
+  ✅ Both entries have premium hours, policy_id differs
+
+── Cleanup — Remove Test-Only Data ───────────────────
+  ✅ Test entry 2025-10-05 removed
+  ✅ v3 policy removed
+  ✅ v2 policy reopened (effective_to = NULL)
+  ✅ Test holiday removed
+
+════════════════════════════════════════════════════
+  Results: 67 passed, 0 failed
+  🎉 Group 4 passed! Premium calculations are solid.
+
+
+── Setup — Create Policy v2 (effective 2025-07-01) ────
+  ✅ Policy v1 is active on 2025-03-01
+  ✅ Policy v2 is active on 2025-08-01
+  ✅ Policy v2 has weekly_hours = 35
+  ✅ Policy v2 has flat vacation (age_based = 0)
+  ✅ Only one policy has effective_to = NULL
+
+── Old Entries Frozen with Policy v1 ─────────────────
+  ✅ March entry exists
+  ✅ March entry references policy v1
+  ❌ March snapshot has v1 rules (daily_hours = 8)
+  ❌ March snapshot has v1 weekly_hours = 40
+
+── New Entries Use Policy v2 ─────────────────────────
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at logWorkEntry (file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-policy-change.js:168:6)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-policy-change.js:268:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── Setup — Anna changes from 80% to 60% on 2025-06-01 ────
+  ✅ Contract on 2025-05-15 = 80%
+  ✅ Contract on 2025-06-15 = 60%
+  ✅ Only one contract has effective_to = NULL
+  ✅ Old 80% contract closed on 2025-05-31
+  ✅ New 60% contract weekly target = 24h
+
+── Old Entries Reflect 80% Contract ──────────────────
+  ✅ Anna March entry exists (from seed)
+  ✅ March entry references policy v1
+  ✅ March entry hours = 8
+
+── New Entries Reflect 60% Contract ──────────────────
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at logWorkEntry (file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-contract-change.js:76:6)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-contract-change.js:234:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── 5.1 Vacation Day Reduces Balance ──────────────────
+  ✅ Max starting balance = 24 days (23 + 3 carryover - 2 used in seed)
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at logAbsence (file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-vacation.js:72:6)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-vacation.js:190:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── 6.1 Overtime Accumulates Across Entries ───────────
+  ❌ Seed entries gave Max 5h OT (10 × 0.5h)
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at logWork (file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-overtime.js:68:6)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-overtime.js:134:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── Setup — 2025 Activity Before Rollover ─────────────
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-year-end.js:158:6
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── 8.1 New Employee Hired Mid-Month — Pro-Rata Leave ────
+  ❌ Julia pro-rata = 7.7 days (23 × 4/12)
+  ✅ Pro-rata factor = 0.3 (4 months / 12)
+  ✅ Snapshot records hire trigger
+  ❌ Snapshot records full entitlement before prorate
+  ✅ Contract active from hire date
+  ✅ Contract weekly target = 40h
+
+── 8.2 Employee Rehired After Gap ────────────────────
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: table time_entries has no column named snapshot
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-lifecycle.js:146:4
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+
+── 9.1 Leap Year — Feb 29 2028 ───────────────────────
+  ✅ 2028 is a leap year
+  ✅ 2025 is not a leap year
+  ✅ 2100 is not a leap year
+  ✅ 2000 is a leap year
+  ❌ Feb 29 2028 entry accepted by SQLite
+  ❌ Leap day entry stored and queryable
+  ❌ Leap day entry date preserved exactly
+  ❌ Leap year entries queryable by year
+
+── 9.2 Year Boundary — Dec 31 / Jan 1 ────────────────
+  ❌ Dec 31 entry stored
+  ❌ Jan 1 entry stored
+  ❌ Dec 31 in year 2025
+  ❌ Jan 1 in year 2026
+  ❌ Dec 31 references correct policy
+  ❌ Jan 1 references correct policy
+  ✅ Dec 31 counted in 2025 query
+  ❌ Jan 1 counted in 2026 query
+
+── 9.3 Duplicate Entry Rejected by UNIQUE Constraint ────
+  ❌ First entry on 2025-11-03 accepted
+  ✅ Duplicate entry rejected
+  ❌ Error mentions UNIQUE constraint
+  ❌ Original entry preserved after duplicate attempt
+
+── 9.4 No Active Policy on Date — Blocked Before Insert ────
+  ✅ Entry blocked when no policy active on date
+  ✅ Error describes missing policy
+  ✅ No entry written when policy missing
+
+── 9.5 Overlapping Policies Detected by Integrity Check ────
+  ✅ No overlapping policies in clean state
+  ✅ Overlapping policy detected by integrity check
+  ✅ Overlap detection returns both conflicting IDs
+  ✅ No overlaps after removing bad policy
+
+── 9.6 Work Entry Without Clock Times — Validation Blocks It ────
+  ✅ Entry blocked with no clock_in
+  ✅ Entry blocked with no clock_out
+  ✅ Entry blocked with neither clock time
+  ✅ Error mentions clock requirement
+  ✅ No phantom entry written after failed validation
+
+── 9.7 Missing Year Balance — Graceful Null Return ────
+  ✅ Returns null (not crash) for missing year balance
+  ✅ Safe function returns null for missing year
+  ✅ Safe function returns value for existing year
+
+── 9.8 Entry Cannot Reference Future Policy ──────────
+  ✅ Policy lookup on 2025-08-01 does NOT return future policy
+  ❌ Entry for Aug 2025 inserted ok
+  ✅ Entry does not reference future policy v5
+  ✅ Future policy resolves correctly for future date
+
+── Final Integrity Check ─────────────────────────────
+  ✅ No entries reference deleted policies
+  ✅ No work entries missing clock times
+
+════════════════════════════════════════════════════
+  Results: 26 passed, 15 failed
+  ⚠️  Some tests failed.
+

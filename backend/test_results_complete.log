@@ -1,0 +1,490 @@
+===============================================
+TEST GROUP: test-premiums.js
+===============================================
+
+── 4.1 Regular Weekday — Zero Premiums ───────────────
+  ✅ Entry created
+  ✅ Gross hours = 8h
+  ✅ Regular hours = 8h (at daily limit)
+  ✅ Overtime = 0
+  ✅ Sunday premium = 0
+  ✅ Holiday premium = 0
+  ✅ Night premium = 0
+
+── 4.2 Sunday Premium ────────────────────────────────
+  ✅ 2025-03-16 is Sunday
+  ✅ Entry created
+  ✅ Gross hours = 8.5h
+  ✅ Regular = 8h
+  ✅ Overtime = 0.5h (v1 daily>8h)
+  ✅ Sunday premium = 8.5h (all gross hours)
+  ✅ Holiday premium = 0 (not a holiday)
+  ✅ Night premium = 0 (day shift)
+
+── 4.3 Public Holiday Premium (Tag der Arbeit) ───────
+  ✅ 2025-05-01 is in public_holidays table
+  ✅ Entry created
+  ✅ Gross hours = 8.5h
+  ✅ Holiday premium = 8.5h (all gross hours)
+  ✅ Sunday premium = 0 (Thursday)
+  ✅ Night premium = 0
+
+── 4.4 Night Shift Premium (23:00–06:00 window) ──────
+  ✅ Entry created (spans midnight)
+  ✅ Gross hours = 9h
+  ✅ Regular = 8h (v1 daily_hours)
+  ✅ Overtime = 1h (9 − 8)
+  ✅ Night premium = 7h (23:00–06:00 overlap)
+  ✅ Sunday premium = 0 (Monday)
+  ✅ Holiday premium = 0
+  ✅ calcNightHours("22:00","07:00") = 7
+  ✅ calcNightHours("08:00","17:00") = 0 (day)
+  ✅ calcNightHours("23:00","06:00") = 7 (full)
+
+── 4.5 Stacked: Sunday + Holiday + Night (all three) ────
+  ✅ 2025-04-06 is Sunday
+  ✅ Test holiday exists on 2025-04-06
+  ✅ Entry created
+  ✅ Gross = 9h
+  ✅ Sunday premium = 9h (all hours)
+  ✅ Holiday premium = 9h (all hours)
+  ✅ Night premium = 7h (23:00–06:00)
+
+── 4.6 Holiday + Overtime (policy threshold, Bundesfeier 2025-08-01) ────
+  ✅ Entry created
+  ✅ Entry references active policy
+  ✅ Gross hours = 9.5h
+  ✅ Regular = 8h (active daily_hours)
+  ✅ Overtime = 1.5h (9.5 − 8)
+  ✅ Holiday premium = 9.5h (ALL gross hours, incl OT)
+  ✅ Sunday premium = 0 (Friday)
+  ✅ Night premium = 0 (day shift)
+
+── 4.7 Extratime — 50h/week Exceeds 48h Max Threshold ────
+  ✅ 5 entries inserted for the week
+  ✅ Weekly gross total = 50h
+  ✅ Weekly regular sum = 40h (5 × 8)
+  ✅ Weekly true OT (40–48h) = 8h
+  ✅ Weekly extratime (>48h) = 2h
+  ✅ Policy max_weekly_hours = 48 (v1)
+  ✅ Extratime premium rate = 25% in policy
+
+── 4.8 Rate Change — Historical Snapshots Preserved ────
+  ✅ Old Sunday entry exists (from 4.2)
+  ✅ Old entry: policy_id references v1
+  ✅ Old entry: sunday premium = 8.5h
+  ✅ 2025-10-05 is Sunday
+  ✅ New entry created under v3
+  ✅ New entry references v3 policy
+  ✅ New entry: sunday premium = 8.5h (same hours)
+  ✅ Old entry STILL references v1 policy
+  ✅ Old entry STILL has 8.5h sunday premium
+  ✅ Both entries have premium hours, policy_id differs
+
+── Cleanup — Remove Test-Only Data ───────────────────
+  ✅ Test entry 2025-10-05 removed
+  ✅ v3 policy removed
+  ✅ v2 policy reopened (effective_to = NULL)
+  ✅ Test holiday removed
+
+════════════════════════════════════════════════════
+  Results: 67 passed, 0 failed
+  🎉 Group 4 passed! Premium calculations are solid.
+
+
+===============================================
+TEST GROUP: test-policy-change.js
+===============================================
+
+── Setup — Create Policy v2 (effective 2025-07-01) ────
+  ✅ Policy v1 is active on 2025-03-01
+  ✅ Policy v2 is active on 2025-08-01
+  ✅ Policy v2 has weekly_hours = 35
+  ✅ Policy v2 has flat vacation (age_based = 0)
+  ✅ Only one policy has effective_to = NULL
+
+── Old Entries Frozen with Policy v1 ─────────────────
+  ✅ March entry exists
+  ✅ March entry references policy v1
+
+── New Entries Use Policy v2 ─────────────────────────
+  ✅ August entry exists
+  ✅ August entry references policy v2
+
+── Historical Overtime Accuracy ──────────────────────
+  ✅ March entry: 0.5h overtime (v1 rule: >8h daily)
+  ✅ August entry: 0.5h overtime (v2 rule: >7h daily)
+  ✅ Aug OT is NOT 0 — v2 lower threshold was applied, not v1
+
+── 2025 Vacation Entitlement Unchanged After Policy Switch ────
+  ✅ Max 2025 entitlement still 23 days (v1 age-based)
+  ✅ Max 2025 balance still references policy v1
+
+── 2026 Year Balance — Lazy Init Uses v2 (flat 28 days) ────
+  ✅ No 2026 balance exists before lazy init
+  ✅ 2026 balance created by lazy init
+  ✅ 2026 balance references policy v2
+  ✅ 2026 entitlement = 28 days (v2 flat rule)
+
+── Lazy Init Is Idempotent (runs twice = same result) ────
+  ✅ Still only 1 row for 2026 after second call
+  ✅ Same entitlement on second call
+
+── Carryover from 2025 into 2026 ─────────────────────
+  ✅ Max 2026 vacation carryover capped at 5 days
+  ❌ Max 2026 overtime carryover = 14h
+
+── Point-in-Time Policy Queries ──────────────────────
+  ✅ Policy on 2025-01-15 = v1
+  ✅ Policy on 2025-06-30 = v1
+  ✅ Policy on 2025-07-01 = v2
+  ✅ Policy on 2025-12-31 = v2
+  ✅ Policy on 2026-06-01 = v2
+
+── Data Integrity Checks ─────────────────────────────
+  ✅ No work entries with NULL policy_id
+  ✅ No overlapping policy date ranges
+
+════════════════════════════════════════════════════
+  Results: 28 passed, 1 failed
+  ⚠️  Some tests failed.
+
+
+===============================================
+TEST GROUP: test-contract-change.js
+===============================================
+
+── Setup — Anna changes from 80% to 60% on 2025-06-01 ────
+  ✅ Contract on 2025-05-15 = 80%
+  ✅ Contract on 2025-06-15 = 60%
+  ✅ Only one contract has effective_to = NULL
+  ✅ Old 80% contract closed on 2025-05-31
+  ✅ New 60% contract weekly target = 24h
+
+── Old Entries Reflect 80% Contract ──────────────────
+  ✅ Anna March entry exists (from seed)
+  ✅ March entry references policy v1
+  ✅ March entry hours = 8
+
+── New Entries Reflect 60% Contract ──────────────────
+  ✅ Anna June entry exists
+  ✅ June OT = 3.2h (60% threshold applied)
+  ✅ June regular = 4.8h
+
+── Same Hours, Different OT Due to Contract Change ────
+  ✅ March 20 OT = 1.6h (80% threshold)
+  ✅ June 2 OT = 3.2h (60% threshold)
+  ✅ Same gross hours (8h), different OT
+
+── 2025 Year Balance Unchanged After Contract Switch ────
+  ✅ Anna 2025 entitlement still 18.4 days (80% at year start)
+  ✅ Anna 2025 balance policy still v1
+
+── 2026 Year Balance — Lazy Init Uses 60% Contract ────
+  ✅ No 2026 balance before lazy init
+  ✅ 2026 balance created
+  ❌ 2026 entitlement = 13.8 days (23 × 60%)
+
+── Point-in-Time Contract Queries ────────────────────
+  ✅ Anna contract on 2025-01-01 = 80%
+  ✅ Anna contract on 2025-05-31 = 80%
+  ✅ Anna contract on 2025-06-01 = 60%
+  ✅ Anna contract on 2025-12-31 = 60%
+  ✅ Anna contract on 2026-03-01 = 60%
+
+── Vacation Carryover 2025 → 2026 ────────────────────
+  ✅ Anna 2026 vacation carryover capped at 5 days
+  ✅ Anna 2026 OT carryover = 11.2h
+
+── Data Integrity ────────────────────────────────────
+  ✅ No employee has more than 1 open contract
+  ✅ Every work entry has a matching contract on that date
+
+════════════════════════════════════════════════════
+  Results: 27 passed, 1 failed
+  ⚠️  Some tests failed.
+
+
+===============================================
+TEST GROUP: test-vacation.js
+===============================================
+
+── 5.1 Vacation Day Reduces Balance ──────────────────
+  ✅ Max starting balance = 24 days (23 + 3 carryover - 2 used in seed)
+  ✅ Balance reduced by 2 after logging 2 vacation days
+  ✅ Reduction is exactly 2 days
+
+── 5.2-5.3 Sick / Accident / Dayoff — Vacation Unchanged ────
+  ✅ Sick day does not reduce vacation balance
+  ✅ Accident day does not reduce vacation balance
+  ✅ Dayoff does not reduce vacation balance
+  ✅ Sick entry stored correctly
+  ✅ Accident entry stored correctly
+
+── 5.4 Public Holiday During Vacation Week ───────────
+  ✅ Easter Monday stored as public-holiday, not vacation
+  ✅ Only 4 vacation days deducted (not 5)
+
+── 5.5 Half-Day Vacation (4h = 0.5 days) ─────────────
+  ✅ Half-day deducts 0.5 days
+  ✅ Entry stores 4 hours
+
+── 5.6 Carryover Cap on Year Rollover ────────────────
+  ✅ Anna 2026 carryover capped at 5 (not 18.4)
+  ✅ Cap comes from policy max_carryover_days = 5
+
+── 5.7 Negative Balance — Advance Leave ──────────────
+  ✅ Balance can go negative with advance leave
+  ✅ Negative balance = -7 days
+  ✅ Reversal restores balance
+
+── 5.8 Vacation Payout (Days → Cash) ─────────────────
+  ✅ Payout reduces vacation balance by 3 days
+  ✅ Payout record stored with correct type
+  ✅ Payout amount is negative (debit)
+
+── 5.9 Part-Time: Entitlement Prorated, Day Unit Same ────
+  ✅ Anna (80%) loses exactly 1 day for 1 vacation day
+  ✅ Day deduction is same unit regardless of work%
+
+── 5.10 Mid-Year Hire — Pro-Rata Entitlement ─────────
+  ✅ Pro-rata entitlement = 7.7 days (23 × 4/12)
+  ✅ Snapshot records hire_date trigger
+  ✅ Snapshot records months remaining = 4
+
+── 5.11 Cross-Year Vacation (Dec 30 – Jan 2) ─────────
+  ✅ Dec 30-31 deducted from 2025 balance
+  ✅ Jan 2 deducted from 2026 balance
+  ✅ 2025 and 2026 balances are independent
+  ✅ Dec entry stored with 2025 date
+  ✅ Jan entry stored with 2026 date
+
+════════════════════════════════════════════════════
+  Results: 30 passed, 0 failed
+  🎉 Group 5 passed! Vacation tracking is solid.
+
+
+===============================================
+TEST GROUP: test-overtime.js
+===============================================
+
+── 6.1 Overtime Accumulates Across Entries ───────────
+  ❌ Seed entries gave Max 5h OT (10 × 0.5h)
+  ✅ 5 more days × 1.5h = 7.5h additional OT
+  ❌ Total OT from entries = 12.5h
+
+── 6.2 Overtime Carryover from Previous Year ─────────
+  ✅ Max has 8h OT carryover from 2024
+  ❌ Total OT balance = 20.5h (8 carryover + 12.5 earned)
+
+── 6.3-6.4 Compensation Day (OT Used as Free Day) ────
+  ✅ 2 compensation days taken (2 × 8h = 16h)
+  ✅ OT balance reduced correctly
+  ✅ Compensation entries exist with correct type
+  ✅ Compensation days do NOT touch vacation balance
+
+── 6.5 Compensation Pool Tracking in Snapshot ────────
+  ✅ Compensation entry exists
+  ✅ Compensation entry has 8h
+
+── 6.6 Overtime Payout (Hours → Cash) ────────────────
+  ✅ Payout reduces OT balance by 5h
+  ✅ Payout record type = payout_overtime
+  ✅ Payout unit = hours
+  ✅ Payout amount is negative (debit)
+
+── 6.7 Negative Overtime Balance (Time Deficit) ──────
+  ❌ Peter starts with 0 OT balance
+  ✅ OT balance can go negative (time deficit)
+  ❌ Deficit = -10h
+
+── 6.8 Manual Overtime Adjustment ────────────────────
+  ✅ Manual +3h adjustment applied
+  ✅ Adjustment has reason recorded
+
+── 6.9 Part-Time OT Threshold = Contract Hours ───────
+  ✅ Anna (80%): 8h day gives 1.6h OT (6.4h threshold)
+  ✅ Max (100%): 8h day gives 0h OT (8.0h threshold)
+  ✅ Same hours worked, different OT due to contract %
+  ✅ Anna entry exists
+  ✅ Anna entry has OT
+
+── 6.10 Weekly OT Accumulation View ──────────────────
+  ✅ Thomas week: 5 days × 7h = 11h weekly OT (60% contract)
+  ✅ 5 entries logged for Thomas
+  ✅ Each entry has 2.2h OT
+
+── Data Integrity ────────────────────────────────────
+  ✅ Every work entry has a matching contract
+  ✅ Every adjustment has a matching year_balance
+
+════════════════════════════════════════════════════
+  Results: 25 passed, 5 failed
+  ⚠️  Some tests failed.
+
+
+===============================================
+TEST GROUP: test-year-end.js
+===============================================
+
+── Setup — 2025 Activity Before Rollover ─────────────
+  ❌ Max used 15.5 vacation days in 2025
+  ❌ Max earned 28.5h OT in 2025
+
+── 7.1 2026 Year Balance Created on First Access ─────
+  ❌ No 2026 balance exists before first access
+  ✅ 2026 balance created on first access
+  ❌ Snapshot records lazy_init trigger
+
+── 7.2 Full Vacation Carryover (No Cap) ──────────────
+  ❌ 2026 vacation carryover = 18 days (all unused carries)
+
+── 7.3 Used Days Excluded from Carryover ─────────────
+  ❌ Carryover = entitlement + prev_carryover - used
+  ✅ Carryover is less than full entitlement (used days excluded)
+
+── 7.4 Overtime Carries Fully into 2026 ──────────────
+  ❌ 2026 OT carryover = 36.5h (8 from 2024 + 28.5 earned)
+  ❌ Full OT carries with no cap
+
+── 7.5 2026 Balance Uses Policy Active on Jan 1 2026 ────
+  ✅ 2026 balance references correct policy
+  ❌ Policy version matches Jan 1 2026
+  ❌ Anna 2026 uses new policy v2 (flat 30 days)
+  ❌ Anna 2026 entitlement = 24 days (v2 flat 30 × 80%)
+
+── 7.6 2025 Balance Frozen After 2026 Rollover ───────
+  ✅ 2025 entitlement unchanged after 2026 rollover
+  ✅ 2025 carryover unchanged
+  ✅ 2025 policy_id unchanged
+  ✅ Exactly one 2025 balance row
+
+── 7.7 Age Increments Correctly for New Year ─────────
+  ✅ Age recorded in 2025 snapshot
+  ❌ Age recorded in 2026 snapshot
+  ❌ Age increments by 1 between years
+
+── 7.8 Mid-2025 Hire Gets Full Entitlement in 2026 ────
+  ✅ Sarah 2025 entitlement was full (seed gave full 23 days)
+  ✅ Sarah 2026 uses v2 policy (flat 30 days)
+  ✅ 2026 is full year — more than 2025
+
+════════════════════════════════════════════════════
+  Results: 11 passed, 13 failed
+  ⚠️  Some tests failed.
+
+
+===============================================
+TEST GROUP: test-lifecycle.js
+===============================================
+
+── 8.1 New Employee Hired Mid-Month — Pro-Rata Leave ────
+  ❌ Julia pro-rata = 7.7 days (23 × 4/12)
+  ✅ Pro-rata factor = 0.3 (4 months / 12)
+  ✅ Snapshot records hire trigger
+  ❌ Snapshot records full entitlement before prorate
+  ✅ Contract active from hire date
+  ✅ Contract weekly target = 40h
+
+── 8.2 Employee Rehired After Gap ────────────────────
+  ✅ Employee status back to active
+  ✅ Old terminated contract preserved
+  ✅ New contract from rehire date exists
+  ✅ Fresh 2026 balance starts with 0 carryover
+  ✅ 2026 balance is pro-rata from rehire
+  ✅ 2026 pro-rata = 10 months remaining
+  ✅ Pre-termination entry still exists after rehire
+  ✅ Old entry data intact
+
+── 8.3 Employee Termination ──────────────────────────
+  ✅ Peter status = terminated
+  ✅ Contract closed on termination date
+  ✅ Final payout recorded in balance_adjustments
+  ✅ Payout reason mentions termination
+  ✅ Payout is negative (debit from balance)
+
+── 8.4 Terminated Employee History Fully Queryable ────
+
+D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5
+	return this[cppdb].prepare(sql, this, false);
+	                   ^
+SqliteError: 10 values for 9 columns
+    at Database.prepare (D:\saas\saasxpo-staging\HRMS-functionality\backend\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    at file:///D:/saas/saasxpo-staging/HRMS-functionality/backend/test-lifecycle.js:229:4
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  code: 'SQLITE_ERROR'
+}
+
+Node.js v22.22.0
+Test failed or timed out
+
+===============================================
+TEST GROUP: test-edge-cases.js
+===============================================
+
+── 9.1 Leap Year — Feb 29 2028 ───────────────────────
+  ✅ 2028 is a leap year
+  ✅ 2025 is not a leap year
+  ✅ 2100 is not a leap year
+  ✅ 2000 is a leap year
+  ✅ Feb 29 2028 entry accepted by SQLite
+  ✅ Leap day entry stored and queryable
+  ✅ Leap day entry date preserved exactly
+  ✅ Leap year entries queryable by year
+
+── 9.2 Year Boundary — Dec 31 / Jan 1 ────────────────
+  ✅ Dec 31 entry stored
+  ✅ Jan 1 entry stored
+  ✅ Dec 31 in year 2025
+  ✅ Jan 1 in year 2026
+  ✅ Dec 31 references correct policy
+  ✅ Jan 1 references correct policy
+  ✅ Dec 31 counted in 2025 query
+  ✅ Jan 1 counted in 2026 query
+
+── 9.3 Duplicate Entry Rejected by UNIQUE Constraint ────
+  ✅ First entry on 2025-11-03 accepted
+  ✅ Duplicate entry rejected
+  ✅ Error mentions UNIQUE constraint
+  ✅ Original entry preserved after duplicate attempt
+
+── 9.4 No Active Policy on Date — Blocked Before Insert ────
+  ✅ Entry blocked when no policy active on date
+  ✅ Error describes missing policy
+  ✅ No entry written when policy missing
+
+── 9.5 Overlapping Policies Detected by Integrity Check ────
+  ✅ No overlapping policies in clean state
+  ✅ Overlapping policy detected by integrity check
+  ✅ Overlap detection returns both conflicting IDs
+  ✅ No overlaps after removing bad policy
+
+── 9.6 Work Entry Without Clock Times — Validation Blocks It ────
+  ✅ Entry blocked with no clock_in
+  ✅ Entry blocked with no clock_out
+  ✅ Entry blocked with neither clock time
+  ✅ Error mentions clock requirement
+  ✅ No phantom entry written after failed validation
+
+── 9.7 Missing Year Balance — Graceful Null Return ────
+  ✅ Returns null (not crash) for missing year balance
+  ✅ Safe function returns null for missing year
+  ✅ Safe function returns value for existing year
+
+── 9.8 Entry Cannot Reference Future Policy ──────────
+  ✅ Policy lookup on 2025-08-01 does NOT return future policy
+  ❌ Entry for Aug 2025 inserted ok
+  ✅ Entry does not reference future policy v5
+  ✅ Future policy resolves correctly for future date
+
+── Final Integrity Check ─────────────────────────────
+  ✅ No entries reference deleted policies
+  ❌ No work entries missing clock times
+
+════════════════════════════════════════════════════
+  Results: 39 passed, 2 failed
+  ⚠️  Some tests failed.
+
+

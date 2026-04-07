@@ -1,0 +1,11 @@
+TEST RESULTS SUMMARY
+====================
+
+test-premiums.js:   Results: 67 passed, 0 failed
+test-policy-change.js:   Results: 28 passed, 1 failed
+test-contract-change.js:   Results: 27 passed, 1 failed
+test-vacation.js:   Results: 30 passed, 0 failed
+test-overtime.js:   Results: 25 passed, 5 failed
+test-year-end.js:   Results: 11 passed, 13 failed
+test-lifecycle.js: 
+test-edge-cases.js:   Results: 39 passed, 2 failed

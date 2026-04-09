@@ -93,10 +93,11 @@ assert('Max has 2 vacation entries', vacEntries.length === 2);
 const dayWithOT = workEntries[0];
 assert('Work entry has overtime_hours stored', dayWithOT.overtime_hours === 0.5); // 8.5 - 8 = 0.5
 
-// Check snapshot is valid JSON
-const snap = JSON.parse(dayWithOT.snapshot);
-assert('Snapshot is valid JSON with policy_id', snap?.policy_id != null);
-assert('Snapshot has calculation result', snap?.result?.regular_hours != null);
+// Snapshot removed — policy now referenced via FK. Check policy_id and stored calc columns.
+assert('Entry has policy_id reference', dayWithOT.policy_id != null);
+const entryPolicy = db.prepare('SELECT * FROM company_policies WHERE id = ?').get(dayWithOT.policy_id);
+assert('policy_id resolves to valid policy', entryPolicy != null);
+assert('Entry has regular_hours stored', dayWithOT.regular_hours === 8);
 
 // Anna sick day
 const annaSick = db.prepare(`SELECT * FROM time_entries WHERE employee_id = 'as' AND entry_type = 'sick'`).get();

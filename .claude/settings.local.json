@@ -7,7 +7,14 @@
       "Bash(node schema.js)",
       "Bash(node seed.js)",
       "Bash(node test-overtime.js)",
-      "Bash(node test-lifecycle.js)"
+      "Bash(node test-lifecycle.js)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "Bash(npm install:*)",
+      "Bash(node test-contract-change.js)",
+      "Bash(node test-vacation.js)",
+      "Bash(node test-year-end.js)",
+      "Bash(node test-edge-cases.js)",
+      "Bash(node test.js)"
     ]
   }
 }
